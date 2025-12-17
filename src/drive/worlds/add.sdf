@@ -1,0 +1,256 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+  <world name="complex_maze">
+
+    <!-- Ambient lighting -->
+    <ambient>0.4 0.4 0.4 1</ambient>
+
+    <!-- Simple ground plane -->
+    <model name="ground">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane><normal>0 0 1</normal><size>40 40</size></plane>
+          </geometry>
+        </collision>
+
+        <visual name="visual">
+          <geometry>
+            <plane><normal>0 0 1</normal><size>40 40</size></plane>
+          </geometry>
+          <material>
+            <ambient>0.6 0.6 0.6 1</ambient>
+            <diffuse>0.6 0.6 0.6 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+
+    <!-- ============================== -->
+    <!--        OUTER WALLS            -->
+    <!-- ============================== -->
+
+    <model name="outer_north">
+      <static>true</static>
+      <link name="link">
+
+        <collision name="collision">
+          <geometry><box><size>40 0.5 1</size></box></geometry>
+        </collision>
+
+        <visual name="visual">
+          <geometry><box><size>40 0.5 1</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+          </material>
+        </visual>
+
+      </link>
+      <pose>0 10 0.5 0 0 0</pose>
+    </model>
+
+
+    <model name="outer_south">
+      <static>true</static>
+      <link name="link">
+
+        <collision name="collision">
+          <geometry><box><size>40 0.5 1</size></box></geometry>
+        </collision>
+
+        <visual name="visual">
+          <geometry><box><size>40 0.5 1</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+          </material>
+        </visual>
+
+      </link>
+      <pose>0 -10 0.5 0 0 0</pose>
+    </model>
+
+
+    <model name="outer_east">
+      <static>true</static>
+      <link name="link">
+
+        <collision name="collision">
+          <geometry><box><size>0.5 20 1</size></box></geometry>
+        </collision>
+
+        <visual name="visual">
+          <geometry><box><size>0.5 20 1</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+          </material>
+        </visual>
+
+      </link>
+      <pose>10 0 0.5 0 0 0</pose>
+    </model>
+
+
+    <model name="outer_west">
+      <static>true</static>
+      <link name="link">
+
+        <collision name="collision">
+          <geometry><box><size>0.5 20 1</size></box></geometry>
+        </collision>
+
+        <visual name="visual">
+          <geometry><box><size>0.5 20 1</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+          </material>
+        </visual>
+
+      </link>
+      <pose>-10 0 0.5 0 0 0</pose>
+    </model>
+
+
+
+    <!-- ============================== -->
+    <!--      INTERNAL MAZE WALLS      -->
+    <!-- ============================== -->
+
+    <!-- Horizontal Wall 1 -->
+    <model name="wall_h1">
+      <static>true</static>
+      <link name="link">
+
+        <collision name="collision">
+          <geometry><box><size>12 0.3 1</size></box></geometry>
+        </collision>
+
+        <visual name="visual">
+          <geometry><box><size>12 0.3 1</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+          </material>
+        </visual>
+
+      </link>
+      <pose>-4 6 0.5 0 0 0</pose>
+    </model>
+
+
+    <!-- Horizontal Wall 2 -->
+    <model name="wall_h2">
+      <static>true</static>
+      <link name="link">
+
+        <collision name="collision">
+          <geometry><box><size>16 0.3 1</size></box></geometry>
+        </collision>
+
+        <visual name="visual">
+          <geometry><box><size>16 0.3 1</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+          </material>
+        </visual>
+
+      </link>
+      <pose>2 2 0.5 0 0 0</pose>
+    </model>
+
+
+    <!-- Horizontal Wall 3 -->
+    <model name="wall_h3">
+      <static>true</static>
+      <link name="link">
+
+        <collision name="collision">
+          <geometry><box><size>10 0.3 1</size></box></geometry>
+        </collision>
+
+        <visual name="visual">
+          <geometry><box><size>10 0.3 1</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+          </material>
+        </visual>
+
+      </link>
+      <pose>-3 -2 0.5 0 0 0</pose>
+    </model>
+
+
+    <!-- Vertical Wall 1 -->
+    <model name="wall_v1">
+      <static>true</static>
+      <link name="link">
+
+        <collision name="collision">
+          <geometry><box><size>0.3 10 1</size></box></geometry>
+        </collision>
+
+        <visual name="visual">
+          <geometry><box><size>0.3 10 1</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+          </material>
+        </visual>
+
+      </link>
+      <pose>-6 0 0.5 0 0 0</pose>
+    </model>
+
+
+    <!-- Vertical Wall 2 -->
+    <model name="wall_v2">
+      <static>true</static>
+      <link name="link">
+
+        <collision name="collision">
+          <geometry><box><size>0.3 5 1</size></box></geometry>
+        </collision>
+
+        <visual name="visual">
+          <geometry><box><size>0.3 5 1</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+          </material>
+        </visual>
+
+      </link>
+      <pose>4 4 0.5 0 0 0</pose>
+    </model>
+
+
+    <!-- Vertical Wall 3 -->
+    <model name="wall_v3">
+      <static>true</static>
+      <link name="link">
+
+        <collision name="collision">
+          <geometry><box><size>0.3 8 1</size></box></geometry>
+        </collision>
+
+        <visual name="visual">
+          <geometry><box><size>0.3 8 1</size></box></geometry>
+          <material>
+            <ambient>1 1 1 1</ambient>
+            <diffuse>1 1 1 1</diffuse>
+          </material>
+        </visual>
+
+      </link>
+      <pose>0 -4 0.5 0 0 0</pose>
+    </model>
+
+  </world>
+</sdf>

@@ -1,0 +1,20 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 50
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    diff_drive_controller:
+      type: diff_drive_controller/DiffDriveController
+      left_wheel_names: ["joint_wheel_4", "joint_wheel_5", "joint_wheel_6"]
+      right_wheel_names: ["joint_wheel_1", "joint_wheel_2", "joint_wheel_3"]
+      wheel_separation: 0.5        # adjust to your robot (m)
+      wheel_radius: 0.06           # adjust to your wheel radius (m)
+      cmd_vel_timeout: 0.5
+      publish_rate: 50
+      pose_covariance_diagonal: [0.00001, 0.00001, 0.00001]
+      enable_odom_tf: true
+      odom_frame_id: odom
+      base_frame_id: base_link
+      use_stamped_vel: false

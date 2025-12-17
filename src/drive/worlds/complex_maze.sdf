@@ -1,0 +1,176 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <world name="maze_world">
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>100 100 0.1</size>
+            </box>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>100 100 0.1</size>
+            </box>
+          </geometry>
+          <material>
+            <ambient>0.7 0.7 0.7 1.0</ambient>
+            <diffuse>0.7 0.7 0.7 1.0</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+<light name="sun" type="directional">
+  <pose>0 0 100 0 0 0</pose>
+  <diffuse>1 1 1 1</diffuse>
+  <specular>0.5 0.5 0.5 1</specular>
+  <attenuation>
+    <constant>0.0</constant>
+    <linear>0.0</linear>
+    <quadratic>0.0</quadratic>
+  </attenuation>
+  <direction>-0.5 -0.5 -1</direction>
+</light>
+
+
+    <!-- Outer frame -->
+    <model name="outer_top">
+      <static>true</static>
+      <link name="link">
+        <pose>0 10 0.5 0 0 0</pose>
+        <collision name="col"><geometry><box><size>20 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>20 0.2 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <model name="outer_bottom">
+      <static>true</static>
+      <link name="link">
+        <pose>0 -10 0.5 0 0 0</pose>
+        <collision name="col"><geometry><box><size>20 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>20 0.2 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <model name="outer_left">
+      <static>true</static>
+      <link name="link">
+        <pose>-10 0 0.5 0 0 0</pose>
+        <collision name="col"><geometry><box><size>0.2 20 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>0.2 20 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <model name="outer_right">
+      <static>true</static>
+      <link name="link">
+        <pose>10 0 0.5 0 0 0</pose>
+        <collision name="col"><geometry><box><size>0.2 20 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>0.2 20 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!-- Start room (origin) -->
+    <model name="start_wall_back">
+      <static>true</static>
+      <link name="link">
+        <pose>0 -1.5 0.5 0 0 0</pose>
+        <collision name="col"><geometry><box><size>3 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>3 0.2 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <model name="start_wall_left">
+      <static>true</static>
+      <link name="link">
+        <pose>-1.5 0 0.5 0 0 0</pose>
+        <collision name="col"><geometry><box><size>0.2 3 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>0.2 3 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!-- First fork -->
+    <model name="path_straight">
+      <static>true</static>
+      <link name="link">
+        <pose>0 2 0.5 0 0 0</pose>
+        <collision name="col"><geometry><box><size>6 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6 0.2 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <model name="path_left_block">
+      <static>true</static>
+      <link name="link">
+        <pose>-2 4 0.5 0 0 1.57</pose>
+        <collision name="col"><geometry><box><size>0.2 4 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>0.2 4 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!-- Dead end (right) -->
+    <model name="deadend_right">
+      <static>true</static>
+      <link name="link">
+        <pose>3 4 0.5 0 0 1.57</pose>
+        <collision name="col"><geometry><box><size>0.2 4 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>0.2 4 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <model name="deadend_wall_top">
+      <static>true</static>
+      <link name="link">
+        <pose>1.5 6 0.5 0 0 0</pose>
+        <collision name="col"><geometry><box><size>3 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>3 0.2 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!-- Left path deeper -->
+    <model name="long_left_passage">
+      <static>true</static>
+      <link name="link">
+        <pose>-4 6 0.5 0 0 0</pose>
+        <collision name="col"><geometry><box><size>4 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>4 0.2 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <model name="left_block_end">
+      <static>true</static>
+      <link name="link">
+        <pose>-6 8 0.5 0 0 1.57</pose>
+        <collision name="col"><geometry><box><size>0.2 4 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>0.2 4 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!-- Trap section -->
+    <model name="trap_half_box">
+      <static>true</static>
+      <link name="link">
+        <pose>-2 8 0.5 0 0 0</pose>
+        <collision name="col"><geometry><box><size>2 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>2 0.2 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+    <!-- Exit path -->
+    <model name="exit_path">
+      <static>true</static>
+      <link name="link">
+        <pose>0 10 0.5 0 0 0</pose>
+        <collision name="col"><geometry><box><size>6 0.2 1</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6 0.2 1</size></box></geometry></visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>
