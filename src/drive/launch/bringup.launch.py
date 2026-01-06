@@ -10,7 +10,7 @@ def generate_launch_description():
 
     # 1. PATHS
     gazebo_urdf_file_path = os.path.join(drive_share, 'urdf', 'drive3.urdf')
-    ekf_config_path = os.path.join(drive_share, 'config', 'ekf.yaml') # <--- NEW CONFIG
+    ekf_config_path = os.path.join(drive_share, 'config', 'ekf.yaml')
     maze_world_path = "/home/ajitesh/ros2_ws/src/drive/worlds/complex_maze.sdf"
 
     # 2. READ URDF
@@ -27,25 +27,29 @@ def generate_launch_description():
         additional_env={'OGRE_RTT_MODE': 'Copy'}
     )
     
-    # 5. ROBOT STATE PUBLISHER
+    # 5. ROBOT STATE PUBLISHER (UPDATED)
     robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
         name='robot_state_publisher',
         output='screen',
-        parameters=[{'robot_description': robot_desc}],
+        parameters=[{
+            'robot_description': robot_desc,
+            'use_sim_time': True  # <--- CHANGE 1: Sync with Sim Time
+        }],
     )
 
-    # 6. ROS GZ BRIDGE
+    # 6. ROS GZ BRIDGE (UPDATED)
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
+            # <--- CHANGE 2: Bridge the Clock so ROS knows the Sim Time
+            '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock', 
             '/scan@sensor_msgs/msg/LaserScan@ignition.msgs.LaserScan',
             '/imu@sensor_msgs/msg/Imu@ignition.msgs.IMU',
             '/cmd_vel@geometry_msgs/msg/Twist@ignition.msgs.Twist',
             '/joint_states@sensor_msgs/msg/JointState[ignition.msgs.Model',
-            # Bridge Odometry Topic (We don't need TF here anymore, EKF handles it)
             '/model/drive/odometry@nav_msgs/msg/Odometry[ignition.msgs.Odometry',
         ],
         remappings=[
@@ -54,14 +58,16 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 7. EKF NODE (ROBOT LOCALIZATION) - The "Senior" Configuration
-    # This node creates the clean "odom -> base_link" TF tree
+    # 7. EKF NODE (UPDATED)
     ekf_node = Node(
         package='robot_localization',
         executable='ekf_node',
         name='ekf_filter_node',
         output='screen',
-        parameters=[ekf_config_path],
+        parameters=[
+            ekf_config_path, 
+            {'use_sim_time': True} # <--- CHANGE 3: Sync EKF with Sim Time
+        ],
         remappings=[('/odometry/filtered', '/odom_filtered')]
     )
 
@@ -80,6 +86,6 @@ def generate_launch_description():
         ignition,
         robot_state_publisher,
         bridge,
-        ekf_node,       # <--- Adds the proper Odometry TF
+        ekf_node,
         delayed_spawn,
     ])
