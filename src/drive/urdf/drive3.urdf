@@ -418,7 +418,7 @@
       <base_frame>base_link</base_frame>
 
       <publish_odom>true</publish_odom>
-      <publish_tf>true</publish_tf>
+      <publish_tf>false</publish_tf>
     </plugin>
   </gazebo>
 

@@ -27,7 +27,7 @@ def generate_launch_description():
                 'axis_linear.x': 1,  # Vertical axis index (Left stick vertical)
                 'scale_linear.x': 1.0,  # Max speed in m/s
                 'axis_angular.yaw': 3,  # Horizontal axis index (Right stick horizontal)
-                'scale_angular.yaw': 1.5  # Max turn speed in rad/s
+                'scale_angular.yaw': 3.0  # Max turn speed in rad/s
             }],
             # Remap is not needed if your robot listens to /cmd_vel
             # If your bridge uses a namespace, uncomment below:
