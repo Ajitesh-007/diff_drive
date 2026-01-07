@@ -10,7 +10,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     pkg_name = 'drive'
     
-    # 2. Define the argument (This was missing in your returned list!)
+    # 2. Define the argument (We set default to 'true' to fix your timestamp error)
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         'use_sim_time',
         default_value='true',
@@ -18,6 +18,7 @@ def generate_launch_description():
     )
 
     # 3. Path to config
+    # Ensure your config file is named exactly this in your src/drive/config folder
     slam_config_path = os.path.join(
         get_package_share_directory(pkg_name),
         'config',
