@@ -1,6 +1,7 @@
 import os
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess, TimerAction, SetEnvironmentVariable
+from launch.actions import ExecuteProcess, TimerAction, SetEnvironmentVariable, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
@@ -12,6 +13,10 @@ def generate_launch_description():
     gazebo_urdf_file_path = os.path.join(drive_share, 'urdf', 'drive3.urdf')
     ekf_config_path = os.path.join(drive_share, 'config', 'ekf.yaml')
     maze_world_path = "/home/ajitesh/ros2_ws/src/drive/worlds/complex_maze.sdf"
+    
+    # --- FIX IS HERE ---
+    # We updated the filename to match what you actually have: slam.launch.py
+    slam_launch_file_path = os.path.join(drive_share, 'launch', 'slam.launch.py')
 
     # 2. READ URDF
     with open(gazebo_urdf_file_path, 'r') as infp:
@@ -27,7 +32,7 @@ def generate_launch_description():
         additional_env={'OGRE_RTT_MODE': 'Copy'}
     )
     
-    # 5. ROBOT STATE PUBLISHER (UPDATED)
+    # 5. ROBOT STATE PUBLISHER
     robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -35,16 +40,15 @@ def generate_launch_description():
         output='screen',
         parameters=[{
             'robot_description': robot_desc,
-            'use_sim_time': True  # <--- CHANGE 1: Sync with Sim Time
+            'use_sim_time': True 
         }],
     )
 
-    # 6. ROS GZ BRIDGE (UPDATED)
+    # 6. ROS GZ BRIDGE
     bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
-            # <--- CHANGE 2: Bridge the Clock so ROS knows the Sim Time
             '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock', 
             '/scan@sensor_msgs/msg/LaserScan@ignition.msgs.LaserScan',
             '/imu@sensor_msgs/msg/Imu@ignition.msgs.IMU',
@@ -58,7 +62,7 @@ def generate_launch_description():
         output='screen'
     )
 
-    # 7. EKF NODE (UPDATED)
+    # 7. EKF NODE
     ekf_node = Node(
         package='robot_localization',
         executable='ekf_node',
@@ -66,12 +70,18 @@ def generate_launch_description():
         output='screen',
         parameters=[
             ekf_config_path, 
-            {'use_sim_time': True} # <--- CHANGE 3: Sync EKF with Sim Time
+            {'use_sim_time': True} 
         ],
         remappings=[('/odometry/filtered', '/odom_filtered')]
     )
 
-    # 8. SPAWN ROBOT
+    # 8. INCLUDE SLAM LAUNCH
+    slam_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(slam_launch_file_path),
+        launch_arguments={'use_sim_time': 'true'}.items()
+    )
+
+    # 9. SPAWN ROBOT
     spawn_entity = Node(
         package='ros_gz_sim',
         executable='create',
@@ -87,5 +97,6 @@ def generate_launch_description():
         robot_state_publisher,
         bridge,
         ekf_node,
+        slam_launch,
         delayed_spawn,
     ])
