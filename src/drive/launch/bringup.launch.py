@@ -13,10 +13,11 @@ def generate_launch_description():
     gazebo_urdf_file_path = os.path.join(drive_share, 'urdf', 'drive3.urdf')
     ekf_config_path = os.path.join(drive_share, 'config', 'ekf.yaml')
     maze_world_path = "/home/ajitesh/ros2_ws/src/drive/worlds/complex_maze.sdf"
-    
-    # --- FIX IS HERE ---
-    # We updated the filename to match what you actually have: slam.launch.py
     slam_launch_file_path = os.path.join(drive_share, 'launch', 'slam.launch.py')
+    
+    # --- PATH TO NAV2 PARAMS & LAUNCH ---
+    nav2_params_path = os.path.join(drive_share, 'config', 'nav2_params.yaml')
+    nav2_launch_dir = get_package_share_directory('nav2_bringup')
 
     # 2. READ URDF
     with open(gazebo_urdf_file_path, 'r') as infp:
@@ -75,13 +76,35 @@ def generate_launch_description():
         remappings=[('/odometry/filtered', '/odom_filtered')]
     )
 
-    # 8. INCLUDE SLAM LAUNCH
+    # 8. RVIZ (Must be in the return list!)
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='screen',
+        parameters=[{'use_sim_time': True}]
+    )
+
+    # 9. SLAM LAUNCH
     slam_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(slam_launch_file_path),
         launch_arguments={'use_sim_time': 'true'}.items()
     )
 
-    # 9. SPAWN ROBOT
+    # 10. NAV2 LAUNCH
+    # We use 'navigation_launch.py' (not bringup) because SLAM provides the map/localization.
+    navigation_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(nav2_launch_dir, 'launch', 'navigation_launch.py')
+        ),
+        launch_arguments={
+            'use_sim_time': 'true',
+            'params_file': nav2_params_path,
+            'autostart': 'true'
+        }.items()
+    )
+
+    # 11. SPAWN ROBOT
     spawn_entity = Node(
         package='ros_gz_sim',
         executable='create',
@@ -89,7 +112,12 @@ def generate_launch_description():
         arguments=['-string', robot_desc, '-name', 'drive', '-x', '0.0', '-y', '0.0', '-z', '0.5'],
     )
 
+    # DELAYS
+    # Spawn robot after 5 seconds to ensure Gazebo is ready
     delayed_spawn = TimerAction(period=5.0, actions=[spawn_entity])
+    
+    # Start Navigation after 10 seconds to ensure SLAM has built a basic map
+    delayed_navigation = TimerAction(period=10.0, actions=[navigation_launch])
 
     return LaunchDescription([
         set_gl_software,
@@ -99,4 +127,6 @@ def generate_launch_description():
         ekf_node,
         slam_launch,
         delayed_spawn,
+        rviz_node,
+        delayed_navigation  # <--- Nav2 is launched here
     ])

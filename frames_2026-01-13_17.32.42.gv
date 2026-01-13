@@ -1,0 +1,23 @@
+digraph G {
+"map" -> "odom"[label=" Broadcaster: default_authority\nAverage rate: 60.0\nBuffer length: 0.05\nMost recent transform: 3.6\nOldest transform: 3.55\n"];
+"base_link" -> "base"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"odom" -> "base_link"[label=" Broadcaster: default_authority\nAverage rate: 20000.0\nBuffer length: 0.0\nMost recent transform: 3.41\nOldest transform: 3.41\n"];
+"base_link" -> "imu_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base_link" -> "lidar_link"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 0.0\nOldest transform: 0.0\n"];
+"base" -> "left_back"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+"left_front" -> "left_bogie"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+"base" -> "left_front"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+"base" -> "right_back"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+"right_front" -> "right_bogie"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+"base" -> "right_front"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+"right_bogie" -> "wheel_1"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+"right_bogie" -> "wheel_2"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+"right_back" -> "wheel_3"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+"left_bogie" -> "wheel_4"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+"left_bogie" -> "wheel_5"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+"left_back" -> "wheel_6"[label=" Broadcaster: default_authority\nAverage rate: 10000.0\nBuffer length: 0.0\nMost recent transform: 3.433\nOldest transform: 3.433\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1768305762.5389357"[ shape=plaintext ] ;
+}->"map";
+}
