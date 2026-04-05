@@ -6,7 +6,9 @@ from launch.actions import (
     IncludeLaunchDescription,
     SetEnvironmentVariable,
     TimerAction,
+    RegisterEventHandler,
 )
+from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -21,6 +23,8 @@ def generate_launch_description():
     urdf_file = os.path.join(pkg_drive, 'urdf', 'drive3.urdf')
     with open(urdf_file, 'r') as f:
         robot_description_content = f.read()
+    # Resolve $(find drive) — plain URDF doesn't support xacro substitutions
+    robot_description_content = robot_description_content.replace('$(find drive)', pkg_drive)
 
     robot_description = {'robot_description': robot_description_content}
 
@@ -85,90 +89,88 @@ def generate_launch_description():
         ],
     )
 
-    # --- Bridges (delayed 2s to let Gazebo start the clock) ---
-    ros_gz_bridge = TimerAction(
-        period=2.0,
-        actions=[
-            Node(
-                package='ros_gz_bridge',
-                executable='parameter_bridge',
-                name='ros_gz_bridge',
-                output='screen',
-                parameters=[{'use_sim_time': use_sim_time}],
-                arguments=[
-                    '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
-                    '/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
-                    '/joint_states@sensor_msgs/msg/JointState[gz.msgs.Model',
-                    '/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
-                    '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
-                ],
-            ),
+    # --- Bridges ---
+    ros_gz_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        name='ros_gz_bridge',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
+        arguments=[
+            # /cmd_vel, /odom, /joint_states now handled by ros2_control
+            '/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
+            '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
         ],
     )
 
-    lidar_bridge = TimerAction(
-        period=2.0,
-        actions=[
-            Node(
-                package='ros_gz_bridge',
-                executable='parameter_bridge',
-                name='lidar_bridge',
-                output='screen',
-                parameters=[{'use_sim_time': use_sim_time}],
-                arguments=['/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'],
-            ),
-        ],
+    # ros2_control controller spawners
+    joint_state_broadcaster_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager'],
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
+    )
+    
+    diff_drive_controller_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['diff_drive_controller', '--controller-manager', '/controller_manager'],
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
     )
 
-    # --- EKF (delayed 4s — needs clock + odom + imu to be flowing) ---
+    lidar_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        name='lidar_bridge',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
+        arguments=['/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'],
+    )
+
+    # --- EKF ---
     ekf_config = os.path.join(pkg_drive, 'config', 'ekf.yaml')
 
-    ekf_node = TimerAction(
-        period=4.0,
-        actions=[
-            Node(
-                package='robot_localization',
-                executable='ekf_node',
-                name='ekf_filter_node',
-                output='screen',
-                parameters=[ekf_config, {'use_sim_time': use_sim_time}],
-            ),
-        ],
+    ekf_node = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
+        output='screen',
+        parameters=[ekf_config, {'use_sim_time': use_sim_time}],
     )
 
-    # --- Nav2 bringup (delayed 8s — needs clock + EKF odom->base_link TF) ---
-    nav2_bringup = TimerAction(
-        period=8.0,
-        actions=[
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    os.path.join(pkg_nav2_bringup, 'launch', 'bringup_launch.py')
-                ),
-                launch_arguments={
-                    'map': LaunchConfiguration('map'),
-                    'params_file': LaunchConfiguration('params_file'),
-                    'use_sim_time': 'true',
-                    'autostart': 'true',
-                }.items(),
-            ),
-        ],
+    # --- Nav2 bringup ---
+    nav2_bringup = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_nav2_bringup, 'launch', 'bringup_launch.py')
+        ),
+        launch_arguments={
+            'map': LaunchConfiguration('map'),
+            'params_file': LaunchConfiguration('params_file'),
+            'use_sim_time': 'true',
+            'autostart': 'true',
+        }.items(),
     )
 
-    # --- RViz2 (delayed 10s) ---
+    # --- RViz2 ---
     rviz_config_file = os.path.join(pkg_drive, 'rviz', 'nav2_config.rviz')
 
-    rviz2_node = TimerAction(
-        period=10.0,
-        actions=[
-            Node(
-                package='rviz2',
-                executable='rviz2',
-                name='rviz2',
-                output='screen',
-                arguments=['-d', rviz_config_file],
-                parameters=[{'use_sim_time': use_sim_time}],
-            ),
-        ],
+    rviz2_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='screen',
+        arguments=['-d', rviz_config_file],
+        parameters=[{'use_sim_time': use_sim_time}],
+    )
+
+    # Wait for the controller spawner to exit before starting EKF, Nav2, and RViz
+    delayed_nodes = RegisterEventHandler(
+        event_handler=OnProcessExit(
+            target_action=diff_drive_controller_spawner,
+            on_exit=[ekf_node, nav2_bringup, rviz2_node]
+        )
     )
 
     return LaunchDescription([
@@ -182,7 +184,7 @@ def generate_launch_description():
         spawn_robot,
         ros_gz_bridge,
         lidar_bridge,
-        ekf_node,
-        nav2_bringup,
-        rviz2_node,
+        joint_state_broadcaster_spawner,
+        diff_drive_controller_spawner,
+        delayed_nodes,
     ])

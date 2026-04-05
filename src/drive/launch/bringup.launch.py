@@ -6,7 +6,9 @@ from launch.actions import (
     IncludeLaunchDescription,
     SetEnvironmentVariable,
     TimerAction,
+    RegisterEventHandler,
 )
+from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -20,6 +22,8 @@ def generate_launch_description():
     urdf_file = os.path.join(pkg_drive, 'urdf', 'drive3.urdf')
     with open(urdf_file, 'r') as f:
         robot_description_content = f.read()
+    # Resolve $(find drive) — plain URDF doesn't support xacro substitutions
+    robot_description_content = robot_description_content.replace('$(find drive)', pkg_drive)
 
     robot_description = {'robot_description': robot_description_content}
 
@@ -79,12 +83,27 @@ def generate_launch_description():
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}],
         arguments=[
-            '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
-            '/odom@nav_msgs/msg/Odometry[gz.msgs.Odometry',
-            '/joint_states@sensor_msgs/msg/JointState[gz.msgs.Model',
+            # /cmd_vel, /odom, /joint_states now handled by ros2_control
             '/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
         ],
+    )
+
+    # ros2_control controller spawners
+    joint_state_broadcaster_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager'],
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
+    )
+
+    diff_drive_controller_spawner = Node(
+        package='controller_manager',
+        executable='spawner',
+        arguments=['diff_drive_controller', '--controller-manager', '/controller_manager'],
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
     )
 
     lidar_bridge = Node(
@@ -107,37 +126,35 @@ def generate_launch_description():
         parameters=[ekf_config, {'use_sim_time': use_sim_time}],
     )
 
-    # SLAM (delayed 10s)
+    # SLAM
     slam_toolbox_config = os.path.join(pkg_drive, 'config', 'slam_toolbox.yaml')
 
-    slam_toolbox_node = TimerAction(
-        period=10.0,
-        actions=[
-            Node(
-                package='slam_toolbox',
-                executable='async_slam_toolbox_node',
-                name='slam_toolbox',
-                output='screen',
-                parameters=[slam_toolbox_config, {'use_sim_time': use_sim_time}],
-            ),
-        ],
+    slam_toolbox_node = Node(
+        package='slam_toolbox',
+        executable='async_slam_toolbox_node',
+        name='slam_toolbox',
+        output='screen',
+        parameters=[slam_toolbox_config, {'use_sim_time': use_sim_time}],
     )
 
-    # RViz2 (delayed 12s)
+    # RViz2
     rviz_config_file = os.path.join(pkg_drive, 'rviz', 'drive_config.rviz')
 
-    rviz2_node = TimerAction(
-        period=12.0,
-        actions=[
-            Node(
-                package='rviz2',
-                executable='rviz2',
-                name='rviz2',
-                output='screen',
-                arguments=['-d', rviz_config_file],
-                parameters=[{'use_sim_time': use_sim_time}],
-            ),
-        ],
+    rviz2_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='screen',
+        arguments=['-d', rviz_config_file],
+        parameters=[{'use_sim_time': use_sim_time}],
+    )
+
+    # Wait for the controller spawner to exit before starting EKF, SLAM, and RViz
+    delayed_nodes = RegisterEventHandler(
+        event_handler=OnProcessExit(
+            target_action=diff_drive_controller_spawner,
+            on_exit=[ekf_node, slam_toolbox_node, rviz2_node]
+        )
     )
 
     return LaunchDescription([
@@ -148,8 +165,8 @@ def generate_launch_description():
         robot_state_publisher_node,
         spawn_robot,
         ros_gz_bridge,
+        joint_state_broadcaster_spawner,
+        diff_drive_controller_spawner,
         lidar_bridge,
-        ekf_node,
-        slam_toolbox_node,
-        rviz2_node,
+        delayed_nodes,
     ])
