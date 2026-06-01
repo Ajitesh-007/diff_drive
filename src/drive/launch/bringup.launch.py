@@ -5,7 +5,6 @@ from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
     SetEnvironmentVariable,
-    TimerAction,
     RegisterEventHandler,
 )
 from launch.event_handlers import OnProcessExit
@@ -75,7 +74,7 @@ def generate_launch_description():
         ],
     )
 
-    # Bridge: NO /tf (EKF publishes odom->base_link)
+    # Bridge: IMU + clock (cmd_vel/odom/joint_states handled by ros2_control)
     ros_gz_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
@@ -83,9 +82,23 @@ def generate_launch_description():
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}],
         arguments=[
-            # /cmd_vel, /odom, /joint_states now handled by ros2_control
             '/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+        ],
+    )
+
+    # Depth camera bridges
+    camera_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        name='camera_bridge',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
+        arguments=[
+            '/camera/image@sensor_msgs/msg/Image[gz.msgs.Image',
+            '/camera/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
+            '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '/camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
         ],
     )
 
@@ -106,15 +119,6 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time}],
     )
 
-    lidar_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        name='lidar_bridge',
-        output='screen',
-        parameters=[{'use_sim_time': use_sim_time}],
-        arguments=['/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'],
-    )
-
     # EKF: fuse wheel velocity + IMU heading
     ekf_config = os.path.join(pkg_drive, 'config', 'ekf.yaml')
 
@@ -126,15 +130,22 @@ def generate_launch_description():
         parameters=[ekf_config, {'use_sim_time': use_sim_time}],
     )
 
-    # SLAM
-    slam_toolbox_config = os.path.join(pkg_drive, 'config', 'slam_toolbox.yaml')
+    # RTAB-Map (MAPPING mode)
+    rtabmap_config = os.path.join(pkg_drive, 'config', 'rtabmap.yaml')
 
-    slam_toolbox_node = Node(
-        package='slam_toolbox',
-        executable='async_slam_toolbox_node',
-        name='slam_toolbox',
+    rtabmap_node = Node(
+        package='rtabmap_slam',
+        executable='rtabmap',
+        name='rtabmap',
         output='screen',
-        parameters=[slam_toolbox_config, {'use_sim_time': use_sim_time}],
+        parameters=[rtabmap_config, {'use_sim_time': use_sim_time}],
+        remappings=[
+            ('rgb/image', '/camera/image'),
+            ('rgb/camera_info', '/camera/camera_info'),
+            ('depth/image', '/camera/depth_image'),
+            ('odom', '/odom'),
+        ],
+        arguments=[],  # Do NOT delete the database — map persists across runs
     )
 
     # RViz2
@@ -149,11 +160,11 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time}],
     )
 
-    # Wait for the controller spawner to exit before starting EKF, SLAM, and RViz
+    # Wait for the controller spawner to exit before starting EKF, RTAB-Map, and RViz
     delayed_nodes = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=diff_drive_controller_spawner,
-            on_exit=[ekf_node, slam_toolbox_node, rviz2_node]
+            on_exit=[ekf_node, rtabmap_node, rviz2_node]
         )
     )
 
@@ -165,8 +176,8 @@ def generate_launch_description():
         robot_state_publisher_node,
         spawn_robot,
         ros_gz_bridge,
+        camera_bridge,
         joint_state_broadcaster_spawner,
         diff_drive_controller_spawner,
-        lidar_bridge,
         delayed_nodes,
     ])

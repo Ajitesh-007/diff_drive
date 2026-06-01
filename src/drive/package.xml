@@ -16,6 +16,10 @@
   <depend>ros_gz_bridge</depend>
   <depend>ros_gz_interfaces</depend>
   <depend>rviz2</depend>
+  <depend>rtabmap_ros</depend>
+  <depend>rtabmap_slam</depend>
+  <depend>robot_localization</depend>
+  <depend>nav2_bringup</depend>
 
   <depend>launch</depend>
   <depend>launch_ros</depend>

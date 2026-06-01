@@ -417,8 +417,8 @@
   <!--                    SENSOR LINKS                               -->
   <!-- ============================================================ -->
 
-  <!-- LiDAR sensor link (mounted on top of base) -->
-  <link name="lidar_link">
+  <!-- Depth Camera sensor link (mounted on front/top of base) -->
+  <link name="camera_link">
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="0.1"/>
@@ -427,24 +427,31 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="0.03" length="0.04"/>
+        <box size="0.04 0.08 0.04"/>
       </geometry>
-      <material name="black">
+      <material name="camera_black">
         <color rgba="0.1 0.1 0.1 1"/>
       </material>
     </visual>
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <cylinder radius="0.03" length="0.04"/>
+        <box size="0.04 0.08 0.04"/>
       </geometry>
     </collision>
   </link>
-  <!-- Adjust xyz to place LiDAR on top of your rover chassis -->
-  <joint name="lidar_joint" type="fixed">
+  <joint name="camera_joint" type="fixed">
     <origin xyz="0.32 0.33 0.55" rpy="0 0 0"/>
     <parent link="base_link"/>
-    <child link="lidar_link"/>
+    <child link="camera_link"/>
+  </joint>
+
+  <!-- Camera optical frame (ROS convention: Z-forward, X-right, Y-down) -->
+  <link name="camera_optical_link"/>
+  <joint name="camera_optical_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
+    <parent link="camera_link"/>
+    <child link="camera_optical_link"/>
   </joint>
 
   <!-- IMU sensor link -->
@@ -461,7 +468,7 @@
     <child link="imu_link"/>
   </joint>
 
-   <!-- ============================================================ -->
+  <!-- ============================================================ -->
   <!--              IGNITION GAZEBO PLUGINS                          -->
   <!-- ============================================================ -->
 
@@ -574,40 +581,37 @@
     </plugin>
   </gazebo>
 
-  <!-- 2D LiDAR sensor (Ignition GPU Lidar) -->
-  <gazebo reference="lidar_link">
-    <sensor name="lidar_sensor" type="gpu_lidar">
-      <pose>0 0 0 0 0 0</pose>
+  <!-- RGBD Depth Camera sensor (Ignition) -->
+  <gazebo reference="camera_link">
+    <sensor name="depth_camera" type="rgbd_camera">
       <always_on>true</always_on>
-      <update_rate>10</update_rate>
+      <update_rate>15</update_rate>
       <visualize>true</visualize>
-      <topic>scan</topic>
-      <ignition_frame_id>lidar_link</ignition_frame_id>
-      <ray>
-        <scan>
-          <horizontal>
-            <samples>360</samples>
-            <resolution>1</resolution>
-            <min_angle>-3.14159</min_angle>
-            <max_angle>3.14159</max_angle>
-          </horizontal>
-          <vertical>
-            <samples>1</samples>
-            <min_angle>0</min_angle>
-            <max_angle>0</max_angle>
-          </vertical>
-        </scan>
-        <range>
-          <min>0.2</min>
-          <max>12.0</max>
-          <resolution>0.01</resolution>
-        </range>
+      <topic>camera</topic>
+      <ignition_frame_id>camera_optical_link</ignition_frame_id>
+      <camera>
+        <horizontal_fov>1.047</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.1</near>
+          <far>10.0</far>
+        </clip>
+        <depth_camera>
+          <clip>
+            <near>0.1</near>
+            <far>10.0</far>
+          </clip>
+        </depth_camera>
         <noise>
           <type>gaussian</type>
           <mean>0.0</mean>
-          <stddev>0.01</stddev>
+          <stddev>0.007</stddev>
         </noise>
-      </ray>
+      </camera>
     </sensor>
   </gazebo>
 
@@ -617,7 +621,6 @@
     </plugin>
   </gazebo>
 
-  <!-- IMU sensor (Ignition) -->
   <!-- IMU sensor -->
   <gazebo reference="imu_link">
     <sensor name="imu_sensor" type="imu">

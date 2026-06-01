@@ -37,30 +37,50 @@ Visualization Manager:
       Frames:
         All Enabled: true
 
-    - Class: rviz_default_plugins/LaserScan
-      Name: LaserScan
+    # --- 3D Accumulated Map from RTAB-Map ---
+    - Class: rviz_default_plugins/PointCloud2
+      Name: 3D Map (cloud_map)
       Enabled: true
       Topic:
-        Value: /scan
+        Value: /rtabmap/cloud_map
+        Reliability Policy: Reliable
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Depth: 1
+      Style: Points
+      Size (m): 0.05
+      Color Transformer: AxisColor
+      Axis: Z
+      Min Color: 0; 0; 255
+      Max Color: 255; 0; 0
+      Decay Time: 0
+
+    # --- Live Depth Cloud from Camera ---
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Live Depth Cloud
+      Enabled: true
+      Topic:
+        Value: /camera/points
         Reliability Policy: Best Effort
         Durability Policy: Volatile
         History Policy: Keep Last
         Depth: 5
-      Size (m): 0.05
-      Color Transformer: FlatColor
-      Color: 255; 0; 0
       Style: Points
+      Size (m): 0.03
+      Color Transformer: RGB8
+      Decay Time: 0
 
+    # --- 2D Occupancy Map (for reference) ---
     - Class: rviz_default_plugins/Map
-      Name: Map
-      Enabled: true
+      Name: 2D Map (reference)
+      Enabled: false
       Topic:
         Value: /map
         Reliability Policy: Reliable
         Durability Policy: Transient Local
         History Policy: Keep Last
         Depth: 1
-      Alpha: 0.7
+      Alpha: 0.5
       Color Scheme: map
       Draw Behind: true
 
@@ -80,7 +100,7 @@ Visualization Manager:
         Value: Arrow
 
   Global Options:
-    Background Color: 48; 48; 48
+    Background Color: 20; 20; 30
     Fixed Frame: map
     Frame Rate: 30
 
@@ -100,10 +120,10 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 10.0
+      Distance: 15.0
       Focal Point:
         X: 0
         Y: 0
         Z: 0
-      Pitch: 1.5708
+      Pitch: 0.6
       Yaw: 3.14159

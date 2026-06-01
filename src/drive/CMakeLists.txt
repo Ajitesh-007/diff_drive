@@ -10,7 +10,7 @@ find_package(ros_gz_interfaces REQUIRED)
 find_package(rviz2 REQUIRED)
 
 install(
-  DIRECTORY launch urdf meshes textures config worlds rviz maps
+  DIRECTORY launch urdf meshes models config worlds rviz maps
   DESTINATION share/${PROJECT_NAME}
 )
 

@@ -5,7 +5,6 @@ from launch.actions import (
     DeclareLaunchArgument,
     IncludeLaunchDescription,
     SetEnvironmentVariable,
-    TimerAction,
     RegisterEventHandler,
 )
 from launch.event_handlers import OnProcessExit
@@ -23,7 +22,6 @@ def generate_launch_description():
     urdf_file = os.path.join(pkg_drive, 'urdf', 'drive3.urdf')
     with open(urdf_file, 'r') as f:
         robot_description_content = f.read()
-    # Resolve $(find drive) — plain URDF doesn't support xacro substitutions
     robot_description_content = robot_description_content.replace('$(find drive)', pkg_drive)
 
     robot_description = {'robot_description': robot_description_content}
@@ -40,17 +38,17 @@ def generate_launch_description():
         'world', default_value=world_file,
     )
 
-    map_file = os.path.join(pkg_drive, 'maps', 'maze_map1.yaml')
-
-    declare_map = DeclareLaunchArgument(
-        'map', default_value=map_file,
-        description='Full path to the map yaml file',
-    )
-
     nav2_params_file = os.path.join(pkg_drive, 'config', 'nav2_params.yaml')
 
     declare_params = DeclareLaunchArgument(
         'params_file', default_value=nav2_params_file,
+    )
+
+    # Path to the RTAB-Map database saved during mapping
+    declare_database = DeclareLaunchArgument(
+        'database_path',
+        default_value=os.path.join(os.path.expanduser('~'), '.ros', 'rtabmap.db'),
+        description='Path to the RTAB-Map database file for localization',
     )
 
     set_gz_resource_path = SetEnvironmentVariable(
@@ -97,9 +95,23 @@ def generate_launch_description():
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}],
         arguments=[
-            # /cmd_vel, /odom, /joint_states now handled by ros2_control
             '/imu@sensor_msgs/msg/Imu[gz.msgs.IMU',
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+        ],
+    )
+
+    # Depth camera bridges
+    camera_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        name='camera_bridge',
+        output='screen',
+        parameters=[{'use_sim_time': use_sim_time}],
+        arguments=[
+            '/camera/image@sensor_msgs/msg/Image[gz.msgs.Image',
+            '/camera/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
+            '/camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
+            '/camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
         ],
     )
 
@@ -111,22 +123,13 @@ def generate_launch_description():
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}],
     )
-    
+
     diff_drive_controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
         arguments=['diff_drive_controller', '--controller-manager', '/controller_manager'],
         output='screen',
         parameters=[{'use_sim_time': use_sim_time}],
-    )
-
-    lidar_bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        name='lidar_bridge',
-        output='screen',
-        parameters=[{'use_sim_time': use_sim_time}],
-        arguments=['/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan'],
     )
 
     # --- EKF ---
@@ -140,13 +143,37 @@ def generate_launch_description():
         parameters=[ekf_config, {'use_sim_time': use_sim_time}],
     )
 
-    # --- Nav2 bringup ---
+    # --- RTAB-Map (LOCALIZATION mode) ---
+    rtabmap_config = os.path.join(pkg_drive, 'config', 'rtabmap.yaml')
+
+    rtabmap_node = Node(
+        package='rtabmap_slam',
+        executable='rtabmap',
+        name='rtabmap',
+        output='screen',
+        parameters=[
+            rtabmap_config,
+            {
+                'use_sim_time': use_sim_time,
+                # Localization mode: do NOT add new data to the map
+                'Mem/IncrementalMemory': 'false',
+                'Mem/InitWMWithAllNodes': 'true',
+            },
+        ],
+        remappings=[
+            ('rgb/image', '/camera/image'),
+            ('rgb/camera_info', '/camera/camera_info'),
+            ('depth/image', '/camera/depth_image'),
+            ('odom', '/odom'),
+        ],
+    )
+
+    # --- Nav2 bringup (no AMCL, no map_server — RTAB-Map provides /map + TF) ---
     nav2_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(pkg_nav2_bringup, 'launch', 'bringup_launch.py')
+            os.path.join(pkg_nav2_bringup, 'launch', 'navigation_launch.py')
         ),
         launch_arguments={
-            'map': LaunchConfiguration('map'),
             'params_file': LaunchConfiguration('params_file'),
             'use_sim_time': 'true',
             'autostart': 'true',
@@ -165,25 +192,25 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time}],
     )
 
-    # Wait for the controller spawner to exit before starting EKF, Nav2, and RViz
+    # Wait for the controller spawner to exit before starting EKF, RTAB-Map, Nav2, and RViz
     delayed_nodes = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=diff_drive_controller_spawner,
-            on_exit=[ekf_node, nav2_bringup, rviz2_node]
+            on_exit=[ekf_node, rtabmap_node, nav2_bringup, rviz2_node]
         )
     )
 
     return LaunchDescription([
         declare_use_sim_time,
         declare_world,
-        declare_map,
         declare_params,
+        declare_database,
         set_gz_resource_path,
         ignition_gazebo,
         robot_state_publisher_node,
         spawn_robot,
         ros_gz_bridge,
-        lidar_bridge,
+        camera_bridge,
         joint_state_broadcaster_spawner,
         diff_drive_controller_spawner,
         delayed_nodes,

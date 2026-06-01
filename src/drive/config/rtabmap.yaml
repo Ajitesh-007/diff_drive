@@ -1,0 +1,83 @@
+rtabmap:
+  ros__parameters:
+    use_sim_time: true
+
+    # --- Frame IDs ---
+    frame_id: base_link
+    odom_frame_id: odom
+    map_frame_id: map
+
+    # --- Subscriptions (RTAB-Map uses string "true"/"false" for its own params) ---
+    subscribe_depth: true
+    subscribe_rgb: true
+    subscribe_scan: false
+    subscribe_odom_info: false
+
+    # --- Topic remappings are done in launch file ---
+    # rgb/image       -> /camera/image
+    # rgb/camera_info -> /camera/camera_info
+    # depth/image     -> /camera/depth
+
+    # --- Odometry ---
+    # We use EKF odometry, NOT RTAB-Map visual odometry
+    odom_topic: /odom
+    odom_sensor_sync: false
+
+    # --- Synchronization ---
+    approx_sync: true
+    approx_sync_max_interval: 0.05
+    queue_size: 30
+
+    # --- TF ---
+    # RTAB-Map publishes map->odom, EKF publishes odom->base_link
+    publish_tf: true
+    wait_for_transform: 0.2
+
+    # --- Detection ---
+    Rtabmap/DetectionRate: "2.0"
+    Rtabmap/CreateIntermediateNodes: "true"
+
+    # --- Map publishing: keep ALL accumulated points visible at all times ---
+    map_always_update: true
+    cloud_map_update_all_nodes: true
+    # 3-D cloud voxel size — enables /rtabmap/cloud_map publisher
+    cloud_voxel_size: 0.05
+
+    # --- Memory ---
+    Mem/IncrementalMemory: "true"
+    Mem/InitWMWithAllNodes: "false"
+
+    # --- Registration strategy (0=visual, 1=ICP, 2=visual+ICP) ---
+    Reg/Strategy: "0"
+    Reg/Force3DoF: "false"
+
+    # --- Visual features ---
+    # FeatureType 8 = ORB (built-in, no xfeatures2d needed)
+    # FeatureType 6 = BRIEF (requires xfeatures2d — falls back silently, causes mismatches)
+    Vis/MinInliers: "12"
+    Vis/InlierDistance: "0.1"
+    Vis/FeatureType: "8"
+    Kp/DetectorStrategy: "8"
+
+    # --- Grid / 2D Occupancy Map ---
+    Grid/FromDepth: "true"
+    Grid/RangeMax: "5.0"
+    Grid/RangeMin: "0.3"
+    Grid/CellSize: "0.05"
+    Grid/MaxObstacleHeight: "1.5"
+    Grid/MinGroundHeight: "-0.05"
+    Grid/MaxGroundHeight: "0.15"
+    Grid/NormalsSegmentation: "true"
+    Grid/3D: "true"
+    Grid/RayTracing: "true"
+
+    # --- Optimizer ---
+    Optimizer/Strategy: "1"
+    Optimizer/Iterations: "10"
+    Optimizer/Slam2D: "false"
+
+    # --- Loop closure ---
+    RGBD/OptimizeMaxError: "5.0"
+    RGBD/ProximityBySpace: "true"
+    RGBD/AngularUpdate: "0.05"
+    RGBD/LinearUpdate: "0.05"
