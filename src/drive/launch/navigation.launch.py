@@ -6,11 +6,13 @@ from launch.actions import (
     IncludeLaunchDescription,
     SetEnvironmentVariable,
     RegisterEventHandler,
+    TimerAction,
 )
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch.actions import ExecuteProcess
 
 
 def generate_launch_description():
@@ -143,6 +145,27 @@ def generate_launch_description():
         parameters=[ekf_config, {'use_sim_time': use_sim_time}],
     )
 
+    # --- RGBD Sync ---
+    rgbd_sync_node = Node(
+        package='rtabmap_sync',
+        executable='rgbd_sync',
+        name='rgbd_sync',
+        output='screen',
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'approx_sync': True,
+            'approx_sync_max_interval': 0.2,
+            'queue_size': 30,
+            'qos': 2,
+            'qos_camera_info': 2,
+        }],
+        remappings=[
+            ('rgb/image',       '/camera/image'),
+            ('rgb/camera_info', '/camera/camera_info'),
+            ('depth/image',     '/camera/depth_image'),
+        ],
+    )
+
     # --- RTAB-Map (LOCALIZATION mode) ---
     rtabmap_config = os.path.join(pkg_drive, 'config', 'rtabmap.yaml')
 
@@ -158,14 +181,19 @@ def generate_launch_description():
                 # Localization mode: do NOT add new data to the map
                 'Mem/IncrementalMemory': 'false',
                 'Mem/InitWMWithAllNodes': 'true',
+                # Force full global occupancy grid from ALL database nodes on load
+                'Grid/MaxObstacleHeight': '2.0',
+                'GridGlobal/MinSize': '0',
+                'GridGlobal/UpdateError': '0.0',
+                'RGBD/SavedLocalizationIgnored': 'false',
             },
         ],
         remappings=[
-            ('rgb/image', '/camera/image'),
-            ('rgb/camera_info', '/camera/camera_info'),
-            ('depth/image', '/camera/depth_image'),
+            ('rgbd_image', '/rgbd_image'),
             ('odom', '/odom'),
         ],
+        # database_path must be passed as CLI argument (positional), not as a ROS param
+        arguments=[LaunchConfiguration('database_path')],
     )
 
     # --- Nav2 bringup (no AMCL, no map_server — RTAB-Map provides /map + TF) ---
@@ -178,6 +206,17 @@ def generate_launch_description():
             'use_sim_time': 'true',
             'autostart': 'true',
         }.items(),
+    )
+
+
+    # --- 3D Map Publisher (loads exported full 3D point cloud) ---
+    map_ply_file = os.path.join(pkg_drive, 'maps', 'rtabmap_cloud.ply')
+    script_path = os.path.join(pkg_drive, 'scripts', 'ply_publisher.py')
+
+    ply_publisher_node = ExecuteProcess(
+        cmd=['python3', script_path, '--ply', map_ply_file],
+        name='ply_map_publisher',
+        output='screen',
     )
 
     # --- RViz2 ---
@@ -196,7 +235,11 @@ def generate_launch_description():
     delayed_nodes = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=diff_drive_controller_spawner,
-            on_exit=[ekf_node, rtabmap_node, nav2_bringup, rviz2_node]
+            on_exit=[
+                ekf_node,
+                TimerAction(period=4.0, actions=[rgbd_sync_node]),
+                TimerAction(period=7.0, actions=[rtabmap_node, nav2_bringup, rviz2_node])
+            ]
         )
     )
 
@@ -213,5 +256,6 @@ def generate_launch_description():
         camera_bridge,
         joint_state_broadcaster_spawner,
         diff_drive_controller_spawner,
+        ply_publisher_node,
         delayed_nodes,
     ])

@@ -441,7 +441,7 @@
     </collision>
   </link>
   <joint name="camera_joint" type="fixed">
-    <origin xyz="0.32 0.33 0.55" rpy="0 0 0"/>
+    <origin xyz="0.52 0.30 0.55" rpy="0 0.2618 0"/>
     <parent link="base_link"/>
     <child link="camera_link"/>
   </joint>

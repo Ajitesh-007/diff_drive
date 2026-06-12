@@ -3,7 +3,7 @@ Panels:
     Name: Displays
   - Class: rviz_common/Views
     Name: Views
-  - Class: nav2_rviz_plugins/Nav2Panel
+  - Class: nav2_rviz_plugins/Navigation 2
     Name: Navigation 2
 Visualization Manager:
   Class: ""
@@ -38,15 +38,12 @@ Visualization Manager:
       Topic:
         Value: /rtabmap/cloud_map
         Reliability Policy: Reliable
-        Durability Policy: Volatile
+        Durability Policy: Transient Local
         History Policy: Keep Last
-        Depth: 1
+        Depth: 5
       Style: Points
       Size (m): 0.05
-      Color Transformer: AxisColor
-      Axis: Z
-      Min Color: 0; 0; 255
-      Max Color: 255; 0; 0
+      Color Transformer: RGB8
       Decay Time: 0
 
     # --- Live Depth Cloud from Camera ---

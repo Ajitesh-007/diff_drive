@@ -6,6 +6,7 @@ from launch.actions import (
     IncludeLaunchDescription,
     SetEnvironmentVariable,
     RegisterEventHandler,
+    TimerAction,
 )
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -88,6 +89,8 @@ def generate_launch_description():
     )
 
     # Depth camera bridges
+    # NOTE: Gazebo publishes with Best Effort QoS — ros_gz_bridge mirrors this.
+    # rgbd_sync and RTAB-Map must subscribe with Best Effort on these topics.
     camera_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
@@ -120,6 +123,8 @@ def generate_launch_description():
     )
 
     # EKF: fuse wheel velocity + IMU heading
+    # Started first (immediately after controllers) so TF odom→base_link is
+    # available before RTAB-Map tries to place point clouds.
     ekf_config = os.path.join(pkg_drive, 'config', 'ekf.yaml')
 
     ekf_node = Node(
@@ -130,7 +135,40 @@ def generate_launch_description():
         parameters=[ekf_config, {'use_sim_time': use_sim_time}],
     )
 
+    # ----------------------------------------------------------------
+    # RGBD Sync: subscribes to individual camera topics and publishes a
+    # time-synchronised rtabmap_msgs/RGBDImage on /rgbd_image.
+    #
+    # FIX: add qos_overrides so the node subscribes to camera topics
+    # with Best Effort reliability — this matches the QoS Gazebo bridge
+    # uses and prevents silent topic drops.
+    # ----------------------------------------------------------------
+    rgbd_sync_node = Node(
+        package='rtabmap_sync',
+        executable='rgbd_sync',
+        name='rgbd_sync',
+        output='screen',
+        parameters=[{
+            'use_sim_time': use_sim_time,
+            'approx_sync': True,
+            'approx_sync_max_interval': 0.2,
+            'queue_size': 30,
+            # FIX: subscriber QoS must match Gazebo bridge (Best Effort / Volatile)
+            'qos': 2,            # 1=Reliable, 2=Best Effort
+            'qos_camera_info': 2,
+        }],
+        remappings=[
+            ('rgb/image',       '/camera/image'),
+            ('rgb/camera_info', '/camera/camera_info'),
+            ('depth/image',     '/camera/depth_image'),
+            # output: /rgbd_image  (default, no remap needed)
+        ],
+    )
+
+    # ----------------------------------------------------------------
     # RTAB-Map (MAPPING mode)
+    # subscribe_rgbd=true  → consumes the synced /rgbd_image topic
+    # ----------------------------------------------------------------
     rtabmap_config = os.path.join(pkg_drive, 'config', 'rtabmap.yaml')
 
     rtabmap_node = Node(
@@ -140,12 +178,10 @@ def generate_launch_description():
         output='screen',
         parameters=[rtabmap_config, {'use_sim_time': use_sim_time}],
         remappings=[
-            ('rgb/image', '/camera/image'),
-            ('rgb/camera_info', '/camera/camera_info'),
-            ('depth/image', '/camera/depth_image'),
-            ('odom', '/odom'),
+            ('rgbd_image', '/rgbd_image'),   # from rgbd_sync node
+            ('odom',       '/odom'),
         ],
-        arguments=[],  # Do NOT delete the database — map persists across runs
+        arguments=['--delete_db_on_start'],  # Fresh map each launch for mapping mode
     )
 
     # RViz2
@@ -160,11 +196,21 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time}],
     )
 
-    # Wait for the controller spawner to exit before starting EKF, RTAB-Map, and RViz
+    # ----------------------------------------------------------------
+    # Startup sequence after controllers are ready:
+    #   t=0 s  → EKF (publishes odom→base_link TF immediately)
+    #   t=4 s  → rgbd_sync (camera bridge needs time to establish)
+    #   t=7 s  → rtabmap (TF + rgbd_image guaranteed available)
+    #   t=7 s  → RViz2
+    # ----------------------------------------------------------------
     delayed_nodes = RegisterEventHandler(
         event_handler=OnProcessExit(
             target_action=diff_drive_controller_spawner,
-            on_exit=[ekf_node, rtabmap_node, rviz2_node]
+            on_exit=[
+                ekf_node,
+                TimerAction(period=4.0, actions=[rgbd_sync_node]),
+                TimerAction(period=7.0, actions=[rtabmap_node, rviz2_node]),
+            ]
         )
     )
 

@@ -7,77 +7,92 @@ rtabmap:
     odom_frame_id: odom
     map_frame_id: map
 
-    # --- Subscriptions (RTAB-Map uses string "true"/"false" for its own params) ---
-    subscribe_depth: true
-    subscribe_rgb: true
+    # --- Subscriptions ---
+    # subscribe_rgbd=true: use pre-synced RGBDImage from rgbd_sync node
+    subscribe_rgbd: true
+    subscribe_depth: false
+    subscribe_rgb: false
     subscribe_scan: false
     subscribe_odom_info: false
 
-    # --- Topic remappings are done in launch file ---
-    # rgb/image       -> /camera/image
-    # rgb/camera_info -> /camera/camera_info
-    # depth/image     -> /camera/depth
+    # --- QoS: must match Gazebo bridge (Best Effort) ---
+    qos: 2
+    qos_odom: 1
+    qos_map: 1
 
     # --- Odometry ---
-    # We use EKF odometry, NOT RTAB-Map visual odometry
-    odom_topic: /odom
     odom_sensor_sync: false
 
     # --- Synchronization ---
     approx_sync: true
-    approx_sync_max_interval: 0.05
+    approx_sync_max_interval: 0.5
     queue_size: 30
 
     # --- TF ---
-    # RTAB-Map publishes map->odom, EKF publishes odom->base_link
+    # publish_tf: true → RTAB-Map publishes map→odom (NOT odom→base_link)
+    # EKF owns odom→base_link. No conflict.
     publish_tf: true
-    wait_for_transform: 0.2
+    wait_for_transform: 1.0
 
     # --- Detection ---
     Rtabmap/DetectionRate: "2.0"
     Rtabmap/CreateIntermediateNodes: "true"
-
-    # --- Map publishing: keep ALL accumulated points visible at all times ---
-    map_always_update: true
-    cloud_map_update_all_nodes: true
-    # 3-D cloud voxel size — enables /rtabmap/cloud_map publisher
-    cloud_voxel_size: 0.05
+    Rtabmap/PublishLastSignature: "true"
+    Rtabmap/TimeThr: "0"
 
     # --- Memory ---
     Mem/IncrementalMemory: "true"
-    Mem/InitWMWithAllNodes: "false"
+    Mem/InitWMWithAllNodes: "true"
+    Mem/NotLinkedNodesKept: "true"
 
     # --- Registration strategy (0=visual, 1=ICP, 2=visual+ICP) ---
     Reg/Strategy: "0"
-    Reg/Force3DoF: "false"
+    Reg/Force3DoF: "true"
 
-    # --- Visual features ---
-    # FeatureType 8 = ORB (built-in, no xfeatures2d needed)
-    # FeatureType 6 = BRIEF (requires xfeatures2d — falls back silently, causes mismatches)
-    Vis/MinInliers: "12"
+    # --- Feature Detection ---
+    # ORB works better than SIFT in textureless Gazebo environments
+    Vis/FeatureType: "6"
+    Kp/DetectorStrategy: "6"
+    Vis/MinInliers: "15"
     Vis/InlierDistance: "0.1"
-    Vis/FeatureType: "8"
-    Kp/DetectorStrategy: "8"
+    RGBD/NeighborLinkRefining: "true"
 
-    # --- Grid / 2D Occupancy Map ---
+    # --- Grid / Occupancy Map ---
     Grid/FromDepth: "true"
     Grid/RangeMax: "5.0"
-    Grid/RangeMin: "0.3"
+    Grid/RangeMin: "0.2"
     Grid/CellSize: "0.05"
-    Grid/MaxObstacleHeight: "1.5"
-    Grid/MinGroundHeight: "-0.05"
+    Grid/MaxObstacleHeight: "2.0"
+    Grid/MinGroundHeight: "-0.1"
     Grid/MaxGroundHeight: "0.15"
     Grid/NormalsSegmentation: "true"
     Grid/3D: "true"
     Grid/RayTracing: "true"
+    Grid/NoiseFilteringRadius: "0.1"
+    Grid/NoiseFilteringMinNeighbors: "2"
+
+    # Point cloud map properties
+    cloud_output_voxelized: true
+    cloud_subtract_filtering: true
+    cloud_subtract_filtering_min_neighbors: 2
+
+    # Ensure 2D occupancy grid is also generated (for Nav2)
+    RGBD/CreateOccupancyGrid: "true"
 
     # --- Optimizer ---
     Optimizer/Strategy: "1"
     Optimizer/Iterations: "10"
-    Optimizer/Slam2D: "false"
+    Optimizer/Slam2D: "true"
 
     # --- Loop closure ---
-    RGBD/OptimizeMaxError: "5.0"
+    RGBD/OptimizeMaxError: "1.0"
     RGBD/ProximityBySpace: "true"
     RGBD/AngularUpdate: "0.05"
     RGBD/LinearUpdate: "0.05"
+    # --- Global Grid (full map from all database nodes) ---
+    GridGlobal/MinSize: "0"
+    GridGlobal/UpdateError: "0.0"
+    GridGlobal/Eroded: "false"
+    GridGlobal/FootprintRadius: "0.0"
+    GridGlobal/MaxNodes: "0"
+
