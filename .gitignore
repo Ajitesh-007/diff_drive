@@ -1,3 +1,6 @@
 build/
 install/
 log/
+
+# Large map files (exceed GitHub's 100MB limit)
+src/drive/maps/*.ply
